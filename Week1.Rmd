@@ -1,0 +1,91 @@
+---
+title: "DATA607_Week1"
+author: "Nat Elkins"
+date: "2/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+For this assignment, I chose FiveThirtyEight's MLB Elo dataset.  They use it in their [Complete History of MLB](https://projects.fivethirtyeight.com/complete-history-of-mlb/#) projcet as well as their [annual MLB predictions](https://projects.fivethirtyeight.com/2019-mlb-predictions/).  The Elo system is a comparative rating system that takes into account a team's wins and losses to determine their standing within a league (this system is used across many sports: golf, chess, basketball, etc.).  RStudio seems to crash when I try and load all 100+ years of baseball data, so let's just go with the latest season in 2019.
+
+### Exploring the data
+
+The MLB dataset can be found on FiveThirtyEight's website.  Let's load that data.
+
+```{r load_mlb_elo_latest}
+mlb_elo_latest <- read.csv("https://projects.fivethirtyeight.com/mlb-api/mlb_elo_latest.csv")
+```
+
+Let's take a look at what we've got.  First we can look at the dimensions of the data set.
+
+```{r dimensions}
+dim(mlb_elo_latest)
+```
+
+Length makes sense.  There's 30 teams in MLB and 162 games in the regular season.  (30 x 162) / 2 (since two teams participate in each game) = 2430 games, plus some postseason games leading up through to the World Series.  But what are all the columns?
+
+```{r columns}
+colnames(mlb_elo_latest)
+```
+
+Woah that's a lot.  Fortunately FiveThirtyEight gave us a nice description of each column:
+
+Column | Definition
+-----| ---------
+date | Date of game
+season | Year of season
+neutral | Whether game was on a neutral site
+playoff | Whether game was in playoffs, and the playoff round if so
+team1 | Abbreviation for home team
+team2 | Abbreviation for away team
+elo1_pre | Home team's Elo rating before the game
+elo2_pre | Away team's Elo rating before the game
+elo_prob1 | Home team's probability of winning according to Elo ratings
+elo_prob2 | Away team's probability of winning according to Elo ratings
+elo1_post | Home team's Elo rating after the game
+elo2_post | Away team's Elo rating after the game
+rating1_pre | Home team's rating before the game
+rating2_pre | Away team's rating before the game
+pitcher1 | Name of home starting pitcher
+pitcher2 | Name of away starting pitcher
+pitcher1_rgs | Home starting pitcher's rolling game score before the game
+pitcher2_rgs | Away starting pitcher's rolling game score before the game
+pitcher1_adj | Home starting pitcher's adjustment to their team's rating
+pitcher2_adj | Away starting pitcher's adjustment to their team's rating
+rating_prob1 | Home team's probability of winning according to team ratings and starting pitchers
+rating_prob2 | Away team's probability of winning according to team ratings and starting pitchers
+rating1_post | Home team's rating after the game
+rating2_post | Away team's rating after the game
+score1 | Home team's score
+score2 | Away team's score
+
+I'm interested in seeing, at least in this season, what proportion of the time the Elo system accurately predicted the outcome of the game.  For that, we only need `elo_prob1`, or the probability that the first team would win (`elo_prob1` + `elo_prob2` = 1), and then the final scores of the game to determine who won.
+
+```{r cut_down_columns}
+columns_to_keep <- c("elo_prob1","score1","score2")
+mlb_new <- mlb_elo_latest[columns_to_keep]
+```
+
+Let's also add two new columns to make life a bit easier.  We'll define one columns that represents whether the Elo score indicated team one would win, and then another that will represent whether they did win.
+
+```{r add_new_columns}
+mlb_new$team_one_will_win <- mlb_new$elo_prob1 > .5
+mlb_new$team_one_won <- mlb_new$score1 > mlb_new$score2
+mlb_new$prediction_accurate <- mlb_new$team_one_will_win == mlb_new$team_one_won
+```
+
+Then we can take the mean of the `prediction_accurate` column using the `mean()` function.  According to R documentation, `TRUE` and `FALSE` will be coerced to `1` and `0` respectively.
+
+```{r take_the_mean}
+mean(mlb_new$prediction_accurate)
+```
+
+## Conclusions
+
+Hmm...59.20% doesn't seem _that_ much better than chance.  I'd be curious to examinee other predictive baseball models (of which there are many) and see if they fare any better.  Additionally, I'd like to see to what extent the accuracy of the Elo probability varies significantly from season to season, or even between teams.
+
